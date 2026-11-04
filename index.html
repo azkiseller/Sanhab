@@ -1,0 +1,900 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>استعلام سنهاب</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@100..900&display=swap" rel="stylesheet">
+<script>document.write('<script src="config.js?v='+Date.now()+'"><\/script>')</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+  :root {
+    --primary: #0f5fa6;
+    --primary-dark: #0a4276;
+    --primary-light: #e8f1fa;
+    --bg: #f2f6fa;
+    --card: #ffffff;
+    --border: #dbe4ec;
+    --text: #1f2937;
+    --text-muted: #6b7280;
+    --damage: #b91c1c;
+    --damage-bg: #fef2f2;
+    --endorse: #92400e;
+    --endorse-bg: #fffbeb;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: 'Vazirmatn', Tahoma, Arial, sans-serif;
+    background: var(--bg);
+    margin: 0;
+    padding: 20px;
+    color: var(--text);
+    font-size: 14px;
+  }
+  .container { max-width: 1650px; margin: 0 auto; }
+  h1 {
+    font-size: 1.25rem;
+    margin: 0 0 18px;
+    color: var(--primary-dark);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .search-box {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    margin-bottom: 20px;
+    box-shadow: 0 1px 2px rgba(15, 95, 166, 0.06);
+  }
+  .field { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 180px; }
+  label { font-size: 0.8rem; color: var(--text-muted); }
+  select, input {
+    padding: 9px 12px;
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    font-size: 0.9rem;
+    font-family: inherit;
+    background: #fff;
+  }
+  #val { direction: ltr; text-align: left; }
+  select:focus, input:focus { outline: 2px solid var(--primary); outline-offset: 1px; }
+  button {
+    background: var(--primary);
+    color: white;
+    border: none;
+    padding: 10px 22px;
+    border-radius: 7px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    font-family: inherit;
+    font-weight: 600;
+  }
+  button:hover { background: var(--primary-dark); }
+  button:disabled { background: #9ca3af; cursor: not-allowed; }
+  .status { margin: 8px 2px; font-size: 0.85rem; color: var(--text-muted); }
+  .status.error { color: var(--damage); }
+  .status.loading { color: var(--primary); }
+  .empty-note { color: var(--text-muted); font-size: 0.85rem; padding: 20px; text-align: center; }
+  .ghost-btn {
+    background: var(--card);
+    color: var(--primary);
+    border: 1.5px solid var(--primary);
+    padding: 10px 26px;
+    border-radius: 7px;
+    font-size: 0.88rem;
+    font-weight: 600;
+    transition: background 0.15s, color 0.15s;
+  }
+  .ghost-btn:hover { background: var(--primary); color: #fff; }
+
+  /* ========== جدول ========== */
+  .table-wrap {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    box-shadow: 0 1px 2px rgba(15, 95, 166, 0.06);
+  }
+  table.policy-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.78rem;
+  }
+  table.policy-table thead th {
+    background: var(--primary);
+    color: #fff;
+    font-weight: 600;
+    padding: 9px 8px;
+    text-align: right;
+    white-space: nowrap;
+    position: sticky;
+    top: 0;
+  }
+  table.policy-table td {
+    padding: 8px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+    text-align: right;
+  }
+  tr.policy-row td { background: #fff; }
+  tr.policy-row:nth-child(even) td { background: #fafcfe; }
+  tr.policy-row:hover td, tr.policy-row.open td { background: var(--primary-light); }
+  tr.policy-row.has-history { cursor: pointer; }
+  .muted { color: var(--text-muted); font-size: 0.72rem; }
+  .strong { font-weight: 700; color: var(--primary-dark); }
+  .num { font-family: inherit; direction: ltr; unicode-bidi: plaintext; text-align: right; white-space: nowrap; }
+  .loading-dots { color: #b6c2cf; letter-spacing: 2px; }
+  .holder-name { font-weight: 600; }
+
+  /* --- تخفیف‌ها: درصد بزرگ + سال‌ها ریز --- */
+  .disc { display: flex; flex-direction: column; gap: 1px; white-space: nowrap; }
+  .disc .pct { font-weight: 800; color: var(--primary-dark); font-size: 0.86rem; }
+  .disc .yrs { color: var(--text-muted); font-size: 0.68rem; }
+
+  /* --- ستون سوابق --- */
+  .hist { display: flex; align-items: center; gap: 4px; white-space: nowrap; }
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    border-radius: 999px;
+    padding: 1px 8px;
+    font-size: 0.7rem;
+    font-weight: 700;
+  }
+  .pill.damage { background: var(--damage-bg); color: var(--damage); border: 1px solid #fecaca; }
+  .pill.endorse { background: var(--endorse-bg); color: var(--endorse); border: 1px solid #fde68a; }
+  .chev {
+    display: inline-block;
+    color: var(--primary);
+    font-size: 0.65rem;
+    margin-right: 2px;
+    transition: transform 0.15s;
+  }
+  tr.policy-row.open .chev { transform: rotate(-90deg); }
+
+  /* ========== ردیف‌های فیلد با دکمه‌ی کپی ========== */
+  .field-line {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    white-space: nowrap;
+  }
+  .field-line.field-line--inline { display: inline-flex; }
+  .field-line .field-label { color: #52606d; font-weight: 600; flex-shrink: 0; }
+  .field-line .field-value {
+    font-family: inherit;
+    direction: ltr;
+    unicode-bidi: plaintext;
+    color: var(--text);
+    font-weight: 600;
+  }
+  .copy-btn {
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    padding: 2px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+    border-radius: 5px;
+    flex-shrink: 0;
+    transition: background 0.15s, color 0.15s;
+  }
+  .copy-btn:hover { background: var(--primary-light); color: var(--primary); }
+  .copy-btn svg { width: 13px; height: 13px; pointer-events: none; }
+  .copy-btn.copied { color: #15803d; }
+  .copy-btn.copied:hover { background: #ecfdf5; }
+
+  /* ========== پلاک گرافیکی ========== */
+  .plate-img {
+    position: relative;
+    width: 160px;
+    height: 35.66px;
+    background-repeat: no-repeat;
+    background-size: 100% 100%;
+    direction: ltr;
+    flex-shrink: 0;
+    overflow: hidden;
+  }
+  .plate-img > div {
+    position: absolute;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    color: #111;
+    line-height: 1;
+  }
+  .plate-national { background-image: url('plates/national.png'); }
+  .plate-national .plate-main-text {
+    left: 12%;
+    width: 63%;
+    top: 6%;
+    height: 88%;
+    font-size: 0.95rem;
+    letter-spacing: 1px;
+    gap: 3px;
+    direction: ltr;
+    unicode-bidi: isolate;
+  }
+  .plate-national .plate-main-text span {
+    display: inline-block;
+    direction: ltr;
+    unicode-bidi: isolate;
+  }
+  .plate-national .plate-serial-text {
+    left: 78%;
+    width: 20%;
+    top: 6%;
+    height: 88%;
+    font-size: 0.8rem;
+  }
+  .plate-freezone { background-image: url('plates/freezone.jpg'); }
+  .plate-freezone .fz-serial {
+    left: 0%;
+    width: 36%;
+    top: 3%;
+    height: 94%;
+    font-size: 1.1rem;
+    color: #fff;
+  }
+  .plate-freezone .fz-main {
+    left: 37%;
+    width: 61%;
+    top: 3%;
+    height: 94%;
+    font-size: 1.15rem;
+    letter-spacing: 1px;
+  }
+  .plate-moto {
+    background-image: url('plates/motorcycle.png');
+    background-size: contain;
+    background-position: center;
+    width: 100px;
+    height: 84px;
+  }
+  .plate-moto .mc-serial {
+    left: 24%;
+    width: 72%;
+    top: 16%;
+    height: 34%;
+    font-size: 0.8rem;
+  }
+  .plate-moto .mc-main {
+    left: 24%;
+    width: 72%;
+    top: 50%;
+    height: 40%;
+    font-size: 0.95rem;
+    letter-spacing: 1px;
+  }
+
+  /* ========== ردیف‌های باز شونده ========== */
+  tr.sub-row td {
+    padding: 6px 10px;
+    font-size: 0.75rem;
+    border-bottom: 1px solid var(--border);
+  }
+  tr.damage-row td { background: var(--damage-bg); color: var(--damage); }
+  tr.endorsement-row td { background: var(--endorse-bg); color: var(--endorse); }
+  tr.extra-row td { background: #fff; }
+  .sub-label { font-weight: 700; margin-left: 4px; }
+  details.all-fields summary { cursor: pointer; color: var(--primary); font-size: 0.72rem; }
+  .kv { display: flex; flex-wrap: wrap; gap: 4px 18px; margin-top: 6px; }
+  .kv span { white-space: nowrap; }
+  .kv b { color: #52606d; font-weight: 600; }
+
+  .print-title { display: none; }
+  .app-footer {
+    text-align: center;
+    margin-top: 24px;
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    opacity: 0.6;
+  }
+
+  /* ========== فرم ورود ========== */
+  .hidden { display: none !important; }
+  .login-wrap { display: flex; justify-content: center; padding-top: 6vh; }
+  .login-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 26px 24px;
+    width: 100%;
+    max-width: 360px;
+    box-shadow: 0 4px 18px rgba(15, 95, 166, 0.08);
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .login-card .field { min-width: 0; }
+  .login-card button { width: 100%; }
+  .login-note { margin: 0; font-size: 0.76rem; color: var(--text-muted); text-align: center; line-height: 1.8; }
+  #lu, #en { direction: ltr; text-align: left; }
+  .otp-input { direction: ltr; text-align: center; letter-spacing: 8px; font-size: 1.2rem; font-weight: 700; }
+  .pane { display: flex; flex-direction: column; gap: 14px; }
+  .tabs { display: flex; gap: 6px; background: var(--bg); padding: 4px; border-radius: 9px; }
+  .tabs .tab {
+    flex: 1;
+    background: transparent;
+    color: var(--text-muted);
+    padding: 8px 6px;
+    font-size: 0.82rem;
+    border-radius: 7px;
+  }
+  .tabs .tab:hover { background: rgba(15, 95, 166, 0.06); }
+  .tabs .tab.active { background: var(--card); color: var(--primary-dark); box-shadow: 0 1px 3px rgba(15, 95, 166, 0.12); }
+  .qr-box { display: flex; justify-content: center; }
+  #qr { padding: 10px; background: #fff; border: 1px solid var(--border); border-radius: 10px; }
+  #qr img, #qr canvas { display: block; }
+  .otp-link { font-size: 0.76rem; color: var(--primary); text-align: center; }
+  .manual { font-size: 0.74rem; color: var(--text-muted); text-align: center; line-height: 1.8; }
+  .manual code {
+    display: block;
+    direction: ltr;
+    margin-top: 4px;
+    background: var(--bg);
+    border-radius: 6px;
+    padding: 6px;
+    font-size: 0.85rem;
+    letter-spacing: 1px;
+    color: var(--text);
+    user-select: all;
+  }
+  button.link-btn { background: none; color: var(--primary); padding: 0; font-size: 0.78rem; font-weight: 500; }
+  button.link-btn:hover { background: none; text-decoration: underline; }
+  .user-bar {
+    margin-right: auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--text-muted);
+  }
+  .user-bar button { padding: 5px 14px; font-size: 0.78rem; }
+
+  /* ========== حالت چاپ / PDF ========== */
+  @media print {
+    body { background: #fff; padding: 0; font-size: 11px; }
+    .search-box, #status, .app-footer, button, .chev, .user-bar, #login, details.all-fields { display: none !important; }
+    .container { max-width: 100%; }
+    h1 { display: none; }
+    .print-title {
+      display: block;
+      font-size: 1rem;
+      margin: 0 0 10px;
+      color: #000;
+      text-align: center;
+    }
+    .table-wrap { border: none; box-shadow: none; border-radius: 0; overflow: visible; }
+    table.policy-table { font-size: 9.5px; }
+    table.policy-table thead th {
+      background: var(--primary) !important;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+      position: static;
+    }
+    tr.policy-row, tr.sub-row { break-inside: avoid; }
+    thead { display: table-header-group; }
+    tr.damage-row td, tr.endorsement-row td, .plate-img, .pill {
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    @page { size: A4 landscape; margin: 10mm; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>استعلام سنهاب
+    <span class="user-bar hidden" id="userBar"><span id="userName"></span><button type="button" class="ghost-btn" id="logoutBtn">خروج</button></span>
+  </h1>
+
+  <div id="login" class="login-wrap hidden">
+    <div class="login-card">
+      <div class="tabs">
+        <button type="button" class="tab active" data-tab="loginForm">ورود</button>
+        <button type="button" class="tab" data-tab="enrollForm">ثبت‌نام (بار اول)</button>
+      </div>
+
+      <form id="loginForm" class="pane">
+        <p class="login-note">کد ۶ رقمی را از اپ Google Authenticator یا Microsoft Authenticator وارد کنید.</p>
+        <div class="field">
+          <label>نام کاربری</label>
+          <input id="lu" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" required>
+        </div>
+        <div class="field">
+          <label>کد OTP</label>
+          <input id="lc" class="otp-input" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="••••••" required>
+        </div>
+        <button id="loginBtn">ورود</button>
+      </form>
+
+      <form id="enrollForm" class="pane hidden">
+        <p class="login-note">کد دسترسی تیم را از مدیر بگیرید و یک نام کاربری برای خودتان انتخاب کنید.</p>
+        <div class="field">
+          <label>کد دسترسی تیم</label>
+          <input id="ea" type="password" autocomplete="off" required>
+        </div>
+        <div class="field">
+          <label>نام کاربری دلخواه</label>
+          <input id="en" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="مثلاً ali.r یا علی_رضایی" required>
+        </div>
+        <button id="enrollBtn">ادامه</button>
+      </form>
+
+      <form id="confirmForm" class="pane hidden">
+        <p class="login-note">اپ Google Authenticator یا Microsoft Authenticator را باز کنید، «+» و بعد «اسکن QR» را بزنید.</p>
+        <div class="qr-box"><div id="qr"></div></div>
+        <a id="otpLink" class="otp-link" href="#">روی گوشی هستید؟ برای افزودن مستقیم به اپ اینجا بزنید</a>
+        <div class="manual">اسکن نشد؟ «وارد کردن کلید» را بزنید و این را تایپ کنید:
+          <code id="secretText"></code>
+        </div>
+        <div class="field">
+          <label>کد ۶ رقمی‌ای که اپ نشان می‌دهد</label>
+          <input id="ec" class="otp-input" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="••••••" required>
+        </div>
+        <button id="confirmBtn">تأیید و ورود</button>
+        <button type="button" class="link-btn" id="enrollBack">بازگشت</button>
+      </form>
+
+      <div id="loginStatus"></div>
+    </div>
+  </div>
+
+  <div id="app" class="hidden">
+    <form class="search-box" id="f">
+      <div class="field">
+        <label>نوع جستجو</label>
+        <select id="type">
+          <option value="5">شماره شاسی</option>
+          <option value="4">شماره موتور</option>
+          <option value="7">VIN</option>
+          <option value="1">شماره بیمه نامه</option>
+          <option value="3">کد یکتا</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>مقدار جستجو</label>
+        <input id="val" type="text" required autocomplete="off" placeholder="مثلاً NAS821100M1317741">
+      </div>
+      <button id="go">جستجو</button>
+    </form>
+    <div id="status"></div>
+    <div class="print-title" id="printTitle"></div>
+    <div id="out"></div>
+  </div>
+  <div class="app-footer">developed by M.gh</div>
+</div>
+<script>
+// آدرس بک‌اند در config.js است (برای اجرای محلی خالی بماند).
+const BASE = String(window.APP_CONFIG?.API_BASE ?? window.API_BASE ?? (location.protocol === "file:" ? "http://localhost:8765" : "")).replace(/\/+$/, "");
+const API = BASE + "/api/sanhab";
+const $ = id => document.getElementById(id);
+const out = $("out"), statusEl = $("status"), printTitleEl = $("printTitle"), typeEl = $("type");
+const COLS = 11;              // تعداد ستون‌های جدول
+const DETAIL_BATCH = 3;       // جزئیات چند ردیف در هر درخواست
+
+// ---------- کمکی‌ها ----------
+const h = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const empty = v => v === null || v === undefined || String(v).trim() === "" || String(v).trim() === "-";
+const dash = v => empty(v) ? "-" : h(v);
+const norm = s => String(s || "").replace(/ي/g, "ی").replace(/ك/g, "ک").replace(/‌/g, " ").replace(/\s+/g, " ").trim();
+const LOADING = '<span class="loading-dots">•••</span>';
+
+function setStatus(text, cls = "") {
+  statusEl.innerHTML = text ? `<div class="status ${cls}">${h(text)}</div>` : "";
+}
+
+const PLACEHOLDERS = {
+  "5": "مثلاً NAS821100M1317741",
+  "4": "مثلاً M159682759",
+  "7": "مثلاً IRWZ951VWT2035462",
+  "1": "مثلاً 3127928/05/000042",
+  "3": "مثلاً 16001923317",
+};
+typeEl.addEventListener("change", () => { $("val").placeholder = PLACEHOLDERS[typeEl.value] || "مقدار جستجو"; });
+
+// ---------- ورود با OTP ----------
+const TOKEN_KEY = "sanhab-auth-token", USER_KEY = "sanhab-auth-user", LAST_USER_KEY = "sanhab-last-user";
+const NEED_LOGIN = "__need_login__";
+const store = {
+  get: k => { try { return localStorage.getItem(k) || ""; } catch (_) { return ""; } },
+  set: (k, v) => { try { localStorage.setItem(k, v); } catch (_) {} },
+  del: k => { try { localStorage.removeItem(k); } catch (_) {} },
+};
+const loginStatus = (t, cls = "") => { $("loginStatus").innerHTML = t ? `<div class="status ${cls}">${h(t)}</div>` : ""; };
+
+function showPane(id) {
+  ["loginForm", "enrollForm", "confirmForm"].forEach(p => $(p).classList.toggle("hidden", p !== id));
+  document.querySelectorAll(".tabs .tab").forEach(t =>
+    t.classList.toggle("active", t.dataset.tab === id || (id === "confirmForm" && t.dataset.tab === "enrollForm")));
+  loginStatus("");
+}
+function showLogin(msg) {
+  $("app").classList.add("hidden"); $("userBar").classList.add("hidden"); $("login").classList.remove("hidden");
+  showPane("loginForm");
+  $("lc").value = ""; loginStatus(msg || "", msg ? "error" : "");
+  ($("lu").value ? $("lc") : $("lu")).focus();
+}
+function showApp() {
+  $("login").classList.add("hidden"); $("app").classList.remove("hidden"); $("userBar").classList.remove("hidden");
+  $("userName").textContent = store.get(USER_KEY);
+  $("val").focus();
+}
+function finishLogin(r) {
+  store.set(TOKEN_KEY, r.token); store.set(USER_KEY, r.user); store.set(LAST_USER_KEY, r.user);
+  $("lu").value = r.user; loginStatus(""); showApp();
+}
+function sessionExpired() {
+  store.del(TOKEN_KEY);
+  showLogin("نشست شما تمام شده؛ دوباره وارد شوید.");
+}
+async function postJSON(path, body) {
+  if (!BASE && location.protocol !== "file:" && !/^(localhost|127\.0\.0\.1)$/.test(location.hostname))
+    throw new Error("آدرس سرور در config.js خالی است؛ start_sanhab.bat روی سرور اجرا نشده یا config.js هنوز push نشده.");
+  const res = await fetch(BASE + path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  let r = {}; try { r = await res.json(); } catch (_) {}
+  if (!res.ok) throw new Error(r.error || `سرور جواب درست نداد (کد ${res.status}). پنجره‌ی start_sanhab.bat روی سرور را بررسی کنید.`);
+  return r;
+}
+const friendly = err => err.message === "Failed to fetch" ? "سرور در دسترس نیست." : err.message;
+
+document.querySelectorAll(".tabs .tab").forEach(t => t.addEventListener("click", () => {
+  showPane(t.dataset.tab); (t.dataset.tab === "loginForm" ? $("lu") : $("ea")).focus();
+}));
+$("logoutBtn").addEventListener("click", () => {
+  store.del(TOKEN_KEY); store.del(USER_KEY); out.innerHTML = ""; setStatus(""); showLogin();
+});
+document.querySelectorAll(".otp-input").forEach(inp => inp.addEventListener("input", e => {
+  e.target.value = e.target.value.replace(/[^0-9۰-۹]/g, "").slice(0, 6);
+  if (e.target.value.length === 6 && (e.target.id !== "lc" || $("lu").value.trim())) e.target.form.requestSubmit();
+}));
+$("loginForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  const username = $("lu").value.trim().replace(/\s+/g, "_"), code = $("lc").value.trim();
+  if (!username || code.length !== 6) { loginStatus("نام کاربری و کد ۶ رقمی را وارد کنید.", "error"); return; }
+  if ($("loginBtn").disabled) return;
+  $("loginBtn").disabled = true; loginStatus("در حال ورود…", "loading");
+  try {
+    finishLogin(await postJSON("/api/login", { username, code }));
+  } catch (err) {
+    $("lc").value = "";
+    loginStatus(friendly(err), "error");
+    $("lc").focus();
+  } finally {
+    $("loginBtn").disabled = false;
+  }
+});
+
+let enrollTicket = "";
+$("enrollForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  const access = $("ea").value.trim(), name = $("en").value.trim().replace(/\s+/g, "_");
+  $("en").value = name;
+  if (!access || !name) { loginStatus("کد دسترسی تیم و نام کاربری را وارد کنید.", "error"); return; }
+  if ($("enrollBtn").disabled) return;
+  $("enrollBtn").disabled = true; loginStatus("در حال آماده‌سازی…", "loading");
+  try {
+    const r = await postJSON("/api/enroll", { access, name });
+    enrollTicket = r.ticket;
+    $("qr").innerHTML = "";
+    try { new QRCode($("qr"), { text: r.uri, width: 200, height: 200, correctLevel: QRCode.CorrectLevel.M }); }
+    catch (_) { $("qr").textContent = "QR بارگذاری نشد؛ از کلید دستی پایین استفاده کنید."; }
+    $("otpLink").href = r.uri;
+    $("secretText").textContent = r.secret.replace(/(.{4})/g, "$1 ").trim();
+    $("ec").value = "";
+    showPane("confirmForm");
+    loginStatus(`نام کاربری شما: ${r.name} — بعد از اسکن، کد ۶ رقمی را وارد کنید.`);
+    $("ec").focus();
+  } catch (err) {
+    loginStatus(friendly(err), "error");
+  } finally {
+    $("enrollBtn").disabled = false;
+  }
+});
+$("confirmForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  const code = $("ec").value.trim();
+  if (code.length !== 6) { loginStatus("کد ۶ رقمی اپ را وارد کنید.", "error"); return; }
+  if ($("confirmBtn").disabled) return;
+  $("confirmBtn").disabled = true; loginStatus("در حال تأیید…", "loading");
+  try {
+    finishLogin(await postJSON("/api/enroll/confirm", { ticket: enrollTicket, code }));
+    enrollTicket = ""; $("ea").value = ""; $("en").value = ""; $("qr").innerHTML = ""; $("secretText").textContent = "";
+  } catch (err) {
+    $("ec").value = "";
+    loginStatus(friendly(err), "error");
+    $("ec").focus();
+  } finally {
+    $("confirmBtn").disabled = false;
+  }
+});
+$("enrollBack").addEventListener("click", () => { enrollTicket = ""; $("qr").innerHTML = ""; showPane("enrollForm"); });
+
+// ---------- فراخوانی سرور ----------
+async function call(params) {
+  const res = await fetch(API + "?" + new URLSearchParams(params), { headers: { Authorization: "Bearer " + store.get(TOKEN_KEY) } });
+  if (res.status === 401) { sessionExpired(); throw new Error(NEED_LOGIN); }
+  let r = {}; try { r = await res.json(); } catch (_) {}
+  if (r.error) throw new Error(r.error);
+  return r;
+}
+
+// ---------- کپی ----------
+const COPY_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>';
+const COPY_ICON_DONE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+
+function copyField(label, value, inline) {
+  const tag = inline ? "span" : "div";
+  const cls = inline ? "field-line field-line--inline" : "field-line";
+  if (empty(value)) return `<${tag} class="${cls}"><span class="field-label">${h(label)}</span><span class="field-value">-</span></${tag}>`;
+  return `<${tag} class="${cls}"><span class="field-label">${h(label)}</span><span class="field-value">${h(value)}</span><button type="button" class="copy-btn" data-copy="${h(value)}" title="کپی" aria-label="کپی">${COPY_ICON}</button></${tag}>`;
+}
+function copyValue(value) {
+  if (empty(value)) return '<span class="num">-</span>';
+  return `<span class="field-line"><span class="field-value num">${h(value)}</span><button type="button" class="copy-btn" data-copy="${h(value)}" title="کپی" aria-label="کپی">${COPY_ICON}</button></span>`;
+}
+
+// ---------- پلاک ----------
+function splitPlate(raw) {
+  const s = norm(raw);
+  if (empty(s)) return { plate: "", serial: "" };
+  const m = /^(.*\S)\s+(?:ایران\s*)?([0-9۰-۹]{2,3})$/.exec(s);
+  return m ? { plate: m[1], serial: m[2] } : { plate: s, serial: "" };
+}
+function parsePlateParts(raw) {
+  const str = String(raw || "");
+  const letter = (str.match(/[آ-ی]/) || [""])[0];
+  const groups = str.match(/[0-9۰-۹]+/g) || [];
+  let two = groups.find(g => g.length === 2), three = groups.find(g => g.length === 3);
+  if (!two || !three) {
+    const all = groups.join("");
+    if (all.length === 5) { two = all.slice(0, 2); three = all.slice(2); }
+  }
+  if (!two && !three && !letter) return null;
+  return { two: two || "", letter, three: three || "" };
+}
+const digitsOnly = raw => String(raw || "").replace(/[^0-9۰-۹]/g, "");
+function detectPlateType(plate, serial) {
+  if (/[آ-ی]/.test(plate || "")) return "national";
+  if (digitsOnly(serial).length === 3) return "motorcycle";
+  return "freezone";
+}
+function renderPlateVisual(plate, serial) {
+  if (empty(plate)) return "-";
+  const type = detectPlateType(plate, serial);
+  const ser = empty(serial) ? "—" : h(serial);
+  if (type === "national") {
+    const p = parsePlateParts(plate);
+    const main = p ? `<span>${h(p.two)}</span><span>${h(p.letter)}</span><span>${h(p.three)}</span>` : h(plate);
+    return `<div class="plate-img plate-national"><div class="plate-main-text">${main}</div><div class="plate-serial-text">${ser}</div></div>`;
+  }
+  const d = h(digitsOnly(plate) || plate);
+  if (type === "motorcycle") return `<div class="plate-img plate-moto"><div class="mc-serial">${ser}</div><div class="mc-main">${d}</div></div>`;
+  return `<div class="plate-img plate-freezone"><div class="fz-serial">${ser}</div><div class="fz-main">${d}</div></div>`;
+}
+
+// ---------- خواندن فیلدهای جزئیات (اسم‌ها در سنهاب ممکن است کمی فرق کنند) ----------
+function pick(fields, test) {
+  for (const [k, v] of Object.entries(fields || {})) {
+    if (!empty(v) && test(norm(k))) return v;
+  }
+  return "";
+}
+function readDetail(f) {
+  const has = (k, ...words) => words.every(w => k.includes(w));
+  const pctOf = v => empty(v) ? "" : (String(v).includes("%") || String(v).includes("٪") ? String(v) : v + "%");
+  return {
+    uniqueId: pick(f, k => /کد یکتا|شناسه یکتا/.test(k)),
+    nationalId: pick(f, k => /کد ملی|شناسه ملی/.test(k)),
+    plate: pick(f, k => /شماره پلاک|^پلاک$/.test(k)),
+    vtype: pick(f, k => /نوع خودرو|نوع وسیله|نام خودرو|سیستم|تیپ/.test(k)),
+    model: pick(f, k => /^مدل$|سال ساخت/.test(k)),
+    engine: pick(f, k => has(k, "موتور") && !has(k, "نوع")),
+    chassis: pick(f, k => has(k, "شاسی")),
+    vin: pick(f, k => /vin|وین/i.test(k)),
+    tpYears: pick(f, k => has(k, "سال", "عدم خسارت") && !has(k, "راننده")),
+    tpPct: pctOf(pick(f, k => has(k, "درصد", "تخفیف") && !has(k, "راننده"))),
+    drYears: pick(f, k => has(k, "سال", "راننده")),
+    drPct: pctOf(pick(f, k => has(k, "درصد", "راننده"))),
+    prev: pick(f, k => has(k, "قبلی")),
+  };
+}
+
+// ---------- ستون‌های لیست سنهاب ----------
+function listIndex(head) {
+  const find = (re, fb) => { const i = head.findIndex(x => re.test(norm(x))); return i >= 0 ? i : fb; };
+  return {
+    policy: find(/شماره بیمه ?نامه/, 1),
+    company: find(/شرکت/, 2),
+    holder: find(/بیمه ?گذار/, 3),
+    start: find(/شروع/, 5),
+    end: find(/اتمام|پایان|انقضا/, 6),
+  };
+}
+
+// ---------- رندر ----------
+let current = {}, searchId = 0, listMap = {}, detailMap = {};
+
+function historyCell(d) {
+  if (!d) return LOADING;
+  if (d.error) return `<span class="muted">خطا</span>`;
+  const nd = d.damages?.rows?.length || 0, ne = d.endorsements?.rows?.length || 0;
+  if (!nd && !ne) return '<span class="muted">ندارد</span>';
+  return `<span class="hist">${nd ? `<span class="pill damage">⚠ ${nd} خسارت</span>` : ""}${ne ? `<span class="pill endorse">📄 ${ne} الحاقیه</span>` : ""}<span class="chev">◀</span></span>`;
+}
+function discCell(pct, years) {
+  if (empty(pct) && empty(years)) return "-";
+  return `<div class="disc"><span class="pct num">${dash(pct)}</span>${empty(years) ? "" : `<span class="yrs">${h(years)} سال عدم خسارت</span>`}</div>`;
+}
+function rowCells(rowId) {
+  const L = listMap[rowId], D = detailMap[rowId];
+  const v = D && !D.error ? readDetail(D.detail) : null;
+  const wait = x => D ? x() : LOADING;
+  const { plate, serial } = v ? splitPlate(v.plate) : {};
+  return `
+    <td>${wait(() => copyValue(v?.uniqueId))}</td>
+    <td>${dash(L.company)}</td>
+    <td class="num">${copyValue(L.policy)}</td>
+    <td><div class="holder-name">${dash(L.holder)}</div>${v && !empty(v.nationalId) ? copyField("کدملی: ", v.nationalId) : ""}</td>
+    <td>${wait(() => renderPlateVisual(plate, serial))}</td>
+    <td>${wait(() => `${dash(v?.vtype)}${v && !empty(v.model) ? `<div class="muted">مدل ${h(v.model)}</div>` : ""}`)}</td>
+    <td>${wait(() => copyField("موتور: ", v?.engine) + copyField("شاسی: ", v?.chassis) + copyField("وین: ", v?.vin))}</td>
+    <td class="num">${dash(L.start)}</td>
+    <td class="num">${dash(L.end)}</td>
+    <td>${wait(() => discCell(v?.tpPct, v?.tpYears))}</td>
+    <td>${wait(() => discCell(v?.drPct, v?.drYears))}</td>
+    <td>${historyCell(D)}</td>`;
+}
+function refreshRow(rowId) {
+  const tr = out.querySelector(`tr.policy-row[data-row="${CSS.escape(rowId)}"]`);
+  if (!tr) return;
+  const wasOpen = tr.classList.contains("open");
+  if (wasOpen) clearSubs(tr);
+  tr.innerHTML = rowCells(rowId);
+  const D = detailMap[rowId];
+  tr.classList.toggle("has-history", !!(D && !D.error && ((D.damages?.rows?.length || 0) + (D.endorsements?.rows?.length || 0))));
+  if (wasOpen) openRow(tr);
+}
+
+function tableLines(t, mapCell) {
+  return (t?.rows || []).map(r => r.cells
+    .map((c, i) => (i && !empty(c)) ? mapCell(t.head[i] || "", c) : "")
+    .filter(Boolean).join(" — "));
+}
+function subRowsHtml(rowId) {
+  const D = detailMap[rowId], L = listMap[rowId];
+  if (!D || D.error) return "";
+  const span = COLS + 1;
+  let html = "";
+  tableLines(D.damages, (k, c) => `${h(k)}: <b>${h(c)}</b>`).forEach(x =>
+    html += `<tr class="sub-row damage-row"><td colspan="${span}"><span class="sub-label">⚠ خسارت:</span>${x}</td></tr>`);
+  const end = tableLines(D.endorsements, (k, c) =>
+    (norm(k).includes("نوع") && c.includes("مفاد")) ? "الحاقیه تغییر در مفاد" : `${h(k)}: <b>${h(c)}</b>`);
+  end.forEach((x, i) => html += `<tr class="sub-row endorsement-row"><td colspan="${span}"><span class="sub-label">📄 الحاقیه${end.length > 1 ? " " + (i + 1) : ""}:</span>${x}</td></tr>`);
+  if (norm(L.company).includes("ایران") && end.length)
+    html += `<tr class="sub-row endorsement-row"><td colspan="${span}"><span class="sub-label">📄 نکته:</span>بیمه فوق ایران هست ، جهت بررسی الحاقیه، چاپ الحاقیه بیمه‌نامه را دریافت کنید.</td></tr>`;
+  const kv = Object.entries(D.detail || {}).filter(([, v]) => !empty(v)).map(([k, v]) => `<span><b>${h(k)}:</b> ${h(v)}</span>`).join("");
+  if (kv) html += `<tr class="sub-row extra-row"><td colspan="${span}"><details class="all-fields"><summary>همه‌ی اطلاعات این بیمه‌نامه در سنهاب</summary><div class="kv">${kv}</div></details></td></tr>`;
+  return html;
+}
+function clearSubs(tr) {
+  while (tr.nextElementSibling && tr.nextElementSibling.classList.contains("sub-row")) tr.nextElementSibling.remove();
+  tr.classList.remove("open");
+}
+function openRow(tr) {
+  const html = subRowsHtml(tr.dataset.row);
+  if (!html) return;
+  const tmp = document.createElement("tbody"); tmp.innerHTML = html;
+  tr.after(...tmp.children);
+  tr.classList.add("open");
+}
+
+async function loadDetails(myId, rowIds) {
+  for (let i = 0; i < rowIds.length; i += DETAIL_BATCH) {
+    if (myId !== searchId) return;                      // جستجوی جدید شروع شده
+    const chunk = rowIds.slice(i, i + DETAIL_BATCH);
+    setStatus(`دریافت جزئیات ${Math.min(i + chunk.length, rowIds.length)} از ${rowIds.length} بیمه‌نامه…`, "loading");
+    try {
+      const r = await call({ ...current, rows: chunk.join(",") });
+      if (myId !== searchId) return;
+      chunk.forEach(id => { detailMap[id] = r.details?.[id] || { error: true }; refreshRow(id); });
+    } catch (err) {
+      if (err.message === NEED_LOGIN) return;
+      chunk.forEach(id => { detailMap[id] = { error: true }; refreshRow(id); });
+    }
+  }
+  if (myId === searchId) setStatus(`تعداد بیمه‌نامه یافت‌شده: ${rowIds.length} — برای دیدن خسارت و الحاقیه روی ردیف کلیک کنید`);
+}
+
+// ---------- جستجو ----------
+$("f").addEventListener("submit", async e => {
+  e.preventDefault();
+  const value = $("val").value.trim();
+  if (!value) { setStatus("لطفاً مقدار جستجو را وارد کنید.", "error"); return; }
+  const myId = ++searchId;
+  $("go").disabled = true; out.innerHTML = ""; listMap = {}; detailMap = {};
+  setStatus("در حال استعلام... (ممکن است چند ثانیه طول بکشد)", "loading");
+  try {
+    current = { type: typeEl.value, value };
+    const r = await call(current);
+    const typeLabel = typeEl.options[typeEl.selectedIndex].textContent;
+    printTitleEl.textContent = `استعلام بیمه‌نامه ثالث — ${typeLabel}: ${value} — تاریخ چاپ: ${new Date().toLocaleDateString("fa-IR")}`;
+    if (!r.rows.length) { setStatus(""); out.innerHTML = '<p class="empty-note">نتیجه‌ای یافت نشد.</p>'; return; }
+    const ix = listIndex(r.head);
+    const ids = [];
+    r.rows.forEach((x, n) => {
+      const id = x.rowId || "r" + n;
+      ids.push(id);
+      listMap[id] = { policy: x.cells[ix.policy], company: x.cells[ix.company], holder: x.cells[ix.holder], start: x.cells[ix.start], end: x.cells[ix.end] };
+    });
+    out.innerHTML = `
+      <div class="table-wrap">
+        <table class="policy-table">
+          <thead><tr>
+            <th>کد یکتا</th><th>شرکت</th><th>شماره بیمه‌نامه</th><th>بیمه‌گذار</th><th>پلاک</th><th>نوع خودرو</th>
+            <th>موتور / شاسی / وین</th><th>تاریخ شروع</th><th>تاریخ پایان</th><th>تخفیف ثالث</th><th>تخفیف راننده</th><th>سوابق</th>
+          </tr></thead>
+          <tbody>${ids.map(id => `<tr class="policy-row" data-row="${h(id)}">${rowCells(id)}</tr>`).join("")}</tbody>
+        </table>
+      </div>`;
+    $("go").disabled = false;
+    await loadDetails(myId, ids.filter(id => !id.startsWith("r")));
+  } catch (err) {
+    if (err.message === NEED_LOGIN) setStatus("");
+    else setStatus(err.message === "Failed to fetch" ? "خطای اتصال به سرور: سرور در دسترس نیست." : "خطا: " + err.message, "error");
+  } finally {
+    if (myId === searchId) $("go").disabled = false;
+  }
+});
+
+// ---------- کلیک‌ها ----------
+document.addEventListener("click", async e => {
+  const cb = e.target.closest(".copy-btn");
+  if (cb) {
+    e.stopPropagation();
+    try {
+      await navigator.clipboard.writeText(cb.dataset.copy);
+      const original = cb.innerHTML;
+      cb.innerHTML = COPY_ICON_DONE; cb.classList.add("copied");
+      setTimeout(() => { cb.innerHTML = original; cb.classList.remove("copied"); }, 1200);
+    } catch (_) {}
+    return;
+  }
+  if (e.target.closest("details, summary")) return;
+  const tr = e.target.closest("tr.policy-row");
+  if (!tr || !out.contains(tr) || !detailMap[tr.dataset.row]) return;
+  if (tr.classList.contains("open")) clearSubs(tr); else openRow(tr);
+});
+
+// ---------- شروع ----------
+$("lu").value = store.get(LAST_USER_KEY);
+if (store.get(TOKEN_KEY)) {
+  showApp();
+  // هر بار باز شدن صفحه نشست تمدید می‌شود؛ کسی که مرتب استفاده کند بیرون نمی‌افتد
+  fetch(BASE + "/api/me", { headers: { Authorization: "Bearer " + store.get(TOKEN_KEY) } })
+    .then(async r => {
+      if (r.status === 401) return sessionExpired();
+      if (r.ok) { const d = await r.json(); if (d.token) { store.set(TOKEN_KEY, d.token); store.set(USER_KEY, d.user); $("userName").textContent = d.user; } }
+    })
+    .catch(() => {});
+} else {
+  showLogin();
+}
+</script>
+</body>
+</html>
